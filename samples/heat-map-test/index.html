@@ -83,6 +83,10 @@
         <input id="intensity-as-alpha" type="checkbox" name="public">
         <label>Use intensity as alpha for color map</label>
       </div>
+      <div class="ui toggle checkbox">
+        <input id="texture" type="checkbox" name="public">
+        <label>showTexture</label>
+      </div>
       <div class="range-wrapper">
         <label>color for 0.0</label>
         <button id="colorMap0" style="width: 10px; height: 20px;"></button>
@@ -119,6 +123,7 @@
         </div>
     </div>
   <canvas id="model" width="1200" height="800" style="width: 1200px;height: 800px;position: absolute;right: 0;top: 0;border: solid 1px black;"></canvas>
+  <!-- <canvas id="model" width="4096" height="4096" style="width: 4096px;height: 4096px;position: absolute;right: 0;top: 0;border: solid 1px black;"></canvas> -->
   <script src="/modeloapi.js"></script>
   <script src="./index.js"></script>
 

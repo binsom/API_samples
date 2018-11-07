@@ -587,7 +587,8 @@ var createVolumeRenderingFromXls = function (heatMapTest) {
     heatMapTest.createVolumeRenderingFromTextureBuffers(data, 512, 512);
 }
 
-var createVolumerendering2 = function (heatMapTest) {
+var createVolumeDataFromLevelInfo = function() {
+    var data = [];
     var levelInfos = [];
     levelInfos[0] = [
         {
@@ -834,10 +835,10 @@ var createVolumerendering2 = function (heatMapTest) {
     ];
 
     var intensities = [[0.166, 0.166, 0.166, 0.166, 0.166, 0.166, 0.166, 0.166],
-                    [0.006, 0.006, 0, 0, 0, 0, 0.006, 0.006],
-                    [0.169, 0, 0.083, 0.27, 0.108, 0, 0, 0.09],
-                    [0.011, 0, 0, 0, 0, 0, 0, 0],
-                    [0, 0.154, 0.154, 0.154, 0.154, 0.154, 0.172, 0]
+    [0.006, 0.006, 0, 0, 0, 0, 0.006, 0.006],
+    [0.169, 0, 0.083, 0.27, 0.108, 0, 0, 0.09],
+    [0.011, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0.154, 0.154, 0.154, 0.154, 0.154, 0.172, 0]
     ];
 
     var max = 0;
@@ -907,7 +908,398 @@ var createVolumerendering2 = function (heatMapTest) {
         data.push(buffer);
     });
 
+    return data;
+}
+var createVolumerendering2 = function (heatMapTest) {
+    var data = createVolumeDataFromLevelInfo();
     heatMapTest.createVolumeRenderingFromTextureBuffers(data, 512, 512);
+}
+
+var distanceTransform = function(imageData) {
+    var distanceField = [];
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            distanceField[i * 512 + j] = Infinity;
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            if (j == 0 || j == 511 || imageData[i * 512 + j] != imageData[i * 512 + j + 1]) {
+                distanceField[i * 512 + j] = 0;
+            }
+        }
+    }
+
+    for (var j = 0; j < 512; j++) {
+        for (var i = 0; i < 512; i++) {
+            if (i == 0 || i == 511 || imageData[i * 512 + j] != imageData[(i+1) * 512 +j]) {
+                distanceField[i * 512 + j] = 0;
+            }
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 1; j < 511; j++) {
+            distanceField[i * 512 + j] = Math.min(distanceField[i * 512 + j - 1] + 1, distanceField[i * 512 + j]); 
+        }
+        for (var j = 510; j > 0; j--) {
+            distanceField[i * 512 + j] = Math.min(distanceField[i * 512 + j + 1] + 1, distanceField[i * 512 + j])
+        }
+    }
+    for (var j = 0; j < 512; j++) {
+        for (var i = 1; i < 511; i++) {
+            distanceField[i * 512 + j] = Math.min(distanceField[(i - 1) * 512 + j] + 1, distanceField[i * 512 + j]);
+        }
+        for (var i = 510; i > 0; i --) {
+            distanceField[i * 512 + j] = Math.min(distanceField[(i + 1) * 512 + j] + 1, distanceField[i * 512 + j]);
+        }
+    }
+
+    var centerRegion = {
+        start: [3, 3.5],
+        end: [13, 12.5]
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for(var j = 0; j < 512; j++) {
+            var x = i / 32;
+            var y = j / 32;
+            if (x >= centerRegion.start[0]
+                && x <= centerRegion.end[0]
+                && y >= centerRegion.start[1]
+                && y <= centerRegion.end[1]) {
+                    distanceField[i * 512 + j] = 0.0;
+            }
+
+        }
+    }
+
+    var max = -1;
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            if (distanceField[index] > max) {
+                max = distanceField[index];
+            }
+        }
+    }
+ 
+    for(var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            imageData[index] = distanceField[index] / max;
+        }
+    }
+
+    return;
+    var bitmask = new Uint8Array(512 * 512);
+
+    var indices = [];
+    var traverseData = function(i , j) {
+        var index = i * 512 + j;
+        bitmask[index] = 1;
+        var value = imageData[index];
+        var iSeed = -1;
+        var jSeed = -1;
+        for(var ii = -1; ii < 2; ii++) {
+            for (var jj = -1; jj < 2; jj++) {
+ 
+                var nextIndex = (i + ii) * 512 + j + jj;      
+                if (ii==0 && jj == 0) {
+                    indices.push(nextIndex);
+                    continue;
+                }
+                if (nextIndex >=0 && nextIndex < 262144 && !bitmask[nextIndex] && imageData[nextIndex] === value) {
+                    bitmask[nextIndex] = 1;
+                    indices.push(nextIndex);
+                    if (max < distanceField[nextIndex]) {
+                        max = distanceField[nextIndex];
+                    }
+                    iSeed = i + ii;
+                    jSeed = j + jj;
+                }
+            }
+        }
+        if (iSeed != -1) {
+            traverseData(iSeed, jSeed);
+        }
+    }
+
+    for(var i = 0; i < 512; i++) {
+        for(var j = 0; j < 512; j++) {
+            if (imageData[i * 512 + j] > 0) {
+                if (bitmask[i * 512 + j])
+                    continue;
+                    
+                
+                indices = [];
+                max = -1;
+                traverseData(i, j);
+                if (max == -1)
+                    continue;
+                indices.forEach(function(index) {
+                    imageData[index] = imageData[index] * distanceField[index] / max;
+                })
+            }
+        }
+    }
+}
+
+var createVolumeRenderingDF = function(heatMapTest) {
+    var data = createVolumeDataFromLevelInfo();
+    for(var i = 0; i < data.length; i++) {
+        var imageData = data[i];
+        distanceTransform(imageData);
+    }
+    heatMapTest.createVolumeRenderingFromTextureBuffers(data, 512, 512);
+}
+
+var euclideanDistanceTransform = function(imageData) {
+    var distanceFieldX = new Uint16Array(512 * 512);
+    var distanceFieldY = new Uint16Array(512 * 512);
+    var distanceField = new Uint16Array(512 * 512);
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            distanceFieldX[index] = 65535;
+            distanceFieldY[index] = 65535;
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            if ( j == 0 || j == 511 || i == 0 || i == 511) {
+                distanceFieldX[index] = 0;
+                distanceFieldY[index] = 0;
+                continue;
+            }
+            if (imageData[i * 512 +j] != imageData[i * 512 + j + 1] || imageData[i * 512 +j] != imageData[(i + 1) * 512 +j]) {
+                distanceFieldX[index] = 0;
+                distanceFieldY[index] = 0;
+            }
+        }
+    }
+
+    var centerRegion = {
+        start: [3, 3.5],
+        end: [13, 12.5]
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for(var j = 0; j < 512; j++) {
+            var x = i / 32;
+            var y = j / 32;
+            if (x >= centerRegion.start[0]
+                && x <= centerRegion.end[0]
+                && y >= centerRegion.start[1]
+                && y <= centerRegion.end[1]) {
+                    distanceFieldX[i * 512 + j] = 0.0;
+                    distanceFieldY[i * 512 + j] = 0.0;
+            }
+
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 1; j < 511; j++) {
+            var index = i * 512 + j;
+            distanceFieldX[index] = Math.min(distanceFieldX[index], distanceFieldX[i * 512 + j - 1] + 1);
+        }
+        for (var j = 510; j >= 0; j--) {
+            var index = i * 512 + j;
+            distanceFieldX[index] = Math.min(distanceFieldX[index], distanceFieldX[i * 512 + j + 1] + 1);
+        }
+    }
+
+    for (var j = 0; j < 512; j++) {
+        for (var i = 1; i < 511; i++) {
+            var index = i * 512 + j;
+            distanceFieldY[index] = Math.min(distanceFieldY[index], distanceFieldY[(i - 1) * 512 + j] + 1);
+        }
+        for (var i = 510; i >= 0; i--) {
+            var index = i * 512 + j;
+            distanceFieldY[index] = Math.min(distanceFieldY[index], distanceFieldY[(i + 1) * 512 + j] + 1);
+        }
+    }
+
+    var centerRegion = {
+        start: [3, 3.5],
+        end: [13, 12.5]
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for(var j = 0; j < 512; j++) {
+            var x = i / 32;
+            var y = j / 32;
+            if (x >= centerRegion.start[0]
+                && x <= centerRegion.end[0]
+                && y >= centerRegion.start[1]
+                && y <= centerRegion.end[1]) {
+                    distanceFieldX[i * 512 + j] = 0.0;
+                    distanceFieldY[i * 512 + j] = 0.0;
+            }
+
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            // distanceField[index] = Math.sqrt(distanceFieldX[index] * distanceFieldX[index] + distanceFieldY[index] * distanceFieldY[index]);
+            distanceField[index] = Math.min(distanceFieldX[index], distanceFieldY[index]);
+
+            if (i > 0 && i < 96) {
+                if ((j > 0 && j < 112)) {
+                    var x = i - 96;
+                    var y = j - 112;
+                    distanceField[index] = Math.min(Math.sqrt(x * x + y * y), distanceField[index]);
+                }
+
+                if ((j > 400 && j < 456)) {
+                    var x = i - 96;
+                    var y = j - 400;
+                    distanceField[index] = Math.min(Math.sqrt(x * x + y * y), distanceField[index]);
+                }
+            }
+
+            if (i > 416 && i < 512) {
+                if ((j > 56 && j < 112)) {
+                    var x = i - 416;
+                    var y = j - 112;
+                    distanceField[index] = Math.min(Math.sqrt(x * x + y * y), distanceField[index]);
+                }
+
+                if ((j > 400 && j < 512)) {
+                    var x = i - 416;
+                    var y = j - 400;
+                    distanceField[index] = Math.min(Math.sqrt(x * x + y * y), distanceField[index]);
+                }
+            }
+        }
+    }
+
+    var max = -1;
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            if (distanceField[index] > max) {
+                max = distanceField[index];
+            }
+        }
+    }
+
+    for (var i = 0; i < 512; i++) {
+        for (var j = 0; j < 512; j++) {
+            var index = i * 512 + j;
+            imageData[index] = imageData[index] * distanceField[index] / max;
+        }
+    }
+
+    // var bitmask = new Uint8Array(512 * 512);
+
+    // var indices = [];
+    // var traverseData = function(i , j) {
+    //     var index = i * 512 + j;
+    //     bitmask[index] = 1;
+    //     indices.push(index);
+    //     var value = imageData[index];
+    //     var iSeed = -1;
+    //     var jSeed = -1;
+    //     for(var ii = -1; ii < 2; ii++) {
+    //         for (var jj = -1; jj < 2; jj++) {
+ 
+    //             var nextIndex = (i + ii) * 512 + j + jj;      
+    //             if (ii==0 && jj == 0) {
+    //                 continue;
+    //             }
+    //             if (nextIndex >=0 && nextIndex < 262144 && !bitmask[nextIndex] && imageData[nextIndex] === value) {
+    //                 bitmask[nextIndex] = 1;
+    //                 indices.push(nextIndex);
+    //                 if (max < distanceField[nextIndex]) {
+    //                     max = distanceField[nextIndex];
+    //                 }
+    //                 iSeed = i + ii;
+    //                 jSeed = j + jj;
+    //             }
+    //         }
+    //     }
+    //     if (iSeed != -1) {
+    //         traverseData(iSeed, jSeed);
+    //     }
+    // }
+
+    // for(var i = 1; i < 511; i++) {
+    //     for(var j = 1; j < 511; j++) {
+    //         if (imageData[i * 512 + j] > 0) {
+    //             if (bitmask[i * 512 + j])
+    //                 continue;
+                    
+    //             indices = [];
+    //             max = -1;
+    //             traverseData(i, j);
+    //             if (max == -1)
+    //                 continue;
+    //             indices.forEach(function(index) {
+    //                 imageData[index] = 1.0;//imageData[index] * distanceField[index] / max;
+    //             })
+    //         }
+    //         return;
+    //     }
+    // }
+}
+
+var createVolumerendering3 = function(heatMapTest) {
+    var data = createVolumeDataFromLevelInfo();
+    var max = -1;
+    data.forEach(function(imageData) {
+        euclideanDistanceTransform(imageData);
+        for(var i = 0; i < 512; i++) {
+            for (var j = 0; j < 512; j++) {
+                if (max < imageData[i * 512 + j]) {
+                    max = imageData[i * 512 + j];
+                }
+            }
+        }
+    })
+
+    data.forEach(function(imageData) {
+        for(var i = 0; i < 512; i++) {
+            for (var j = 0; j < 512; j++) {
+                imageData[i * 512 + j] /= max;
+            }
+        }
+    })
+
+    heatMapTest.createVolumeRenderingFromTextureBuffers(data, 512, 512);
+}
+
+var createVolumeRendering4 = function(heatMapTest) {
+    heatMapTest.createVolumeRenderingFromTextureBuffers(null, 512, 512);
+}
+
+var unitData = [];
+for(var i = 0; i < 64; i++) {
+    var data = {
+        "1": 0.8,
+        "2": 0.3,
+        "3": 0.2,
+        "4": 1.0,
+        "5": 0.7,
+        "6": 0.5,
+        "7": 0.2,
+        "8": 1.0,
+        "9": 1.0,
+        "10": 1.0
+    }
+
+    unitData.push(data);
+}
+var createVolumeRendering5 = function(heatMapTest) {
+    // heatMapTest.createVolumeRenderingFromTextures("./volumeMap.png", "./floorMap.png", unitData);
+    heatMapTest.createVolumeRenderingFromTextures("./volumeMap-full.png", "./floorMap-full.png", unitData);
 }
 
 Modelo.Auth.signIn(appToken,
@@ -915,6 +1307,7 @@ Modelo.Auth.signIn(appToken,
     function () {
         var c = document.getElementById("model");
         var viewer = new Modelo.View.Viewer3D(c, false, 1200, 800);
+        // var viewer = new Modelo.View.Viewer3D(c, false, 4096, 4096);
 
         viewer.createScene(function () {
             console.log("create scene successfully");
@@ -935,15 +1328,24 @@ Modelo.Auth.signIn(appToken,
         // createVolumeRendering(heatMapTest);
         // createPlaneHeatMapFromXls(heatMapTest);
         // createVolumeRenderingFromXls(heatMapTest);
-        createVolumerendering2(heatMapTest);
-        viewer.setVolumeRenderingAlphaCorrection(0.05);
+        // createVolumerendering2(heatMapTest);
+        // createVolumeRenderingDF(heatMapTest);
+        // createVolumerendering3(heatMapTest);
+        // createVolumeRendering4(heatMapTest);
+        createVolumeRendering5(heatMapTest);
+
+        // viewer.setVolumeRenderingAlphaCorrection(0.05);
 
         viewer._scene.core.bbox = new Float32Array([-10, -10, -10, 10, 10, 10]);
-        viewer._scene.core.radius = 10;
+        viewer._scene.core.radius = 3;
         viewer.getCamera().switchToView(Modelo.View.ViewAngle.WORLD);
 
         document.getElementById("intensity-as-alpha").onchange = function (evt) {
             viewer.setVolumeRenderingIntensityAsAlpha(document.getElementById("intensity-as-alpha").checked);
+        };
+
+        document.getElementById("texture").onchange = function (evt) {
+            viewer.toggleTextureViewer();
         };
 
         document.getElementById("background-blend").onchange = function () {
@@ -977,7 +1379,7 @@ Modelo.Auth.signIn(appToken,
                 buffer[i * 4 + 2] = _this.toneMap[i][2];
                 buffer[i * 4 + 3] = _this.toneMap[i][3];
             }
-            viewer.setVolumeRenderingColorMap(buffer);
+            // viewer.setVolumeRenderingColorMap(buffer);
         }
 
         $('#colorMap0').css("background-color", "rgb(" + _this.toneMap[0][0] + "," + _this.toneMap[0][1] + "," + _this.toneMap[0][2] + ")");
@@ -1092,3 +1494,5 @@ Modelo.Auth.signIn(appToken,
     });
 
 
+
+    // 51 * 42.2 * 4.2
