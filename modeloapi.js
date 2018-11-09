@@ -11932,6 +11932,7 @@ __webpack_require__.r(__webpack_exports__);
     ShaderChunks["main.vs"] = "#if WEBGL2\r\nlayout (location = 0) in vec3 m_aPosition;\r\n\r\n#if COMPRESSION\r\nlayout (location = 1) in float m_aNormal0;\r\n#else\r\nlayout (location = 1) in vec3 m_aNormal0;\r\n#endif\r\n\r\nlayout (location = 2) in float m_aNormal1;\r\nlayout (location = 3) in float m_aNormal2;\r\nlayout (location = 4) in vec2 m_aTexCoord;\r\nlayout (location = 5) in vec4 m_aColor;\r\nlayout (location = 6) in float m_aMaterial;\r\n\r\n#if INSTANCING\r\nlayout (location = 7) in mat4 m_aModelMatrix;\r\n#endif\r\n\r\n#else\r\nattribute vec3 m_aPosition;\r\n\r\n#if COMPRESSION\r\nattribute float m_aNormal0;\r\n#else\r\nattribute vec3 m_aNormal0;\r\n#endif\r\n\r\nattribute float m_aNormal1;\r\nattribute float m_aNormal2;\r\nattribute vec2 m_aTexCoord;\r\nattribute vec4 m_aColor;\r\nattribute float m_aMaterial;\r\n\r\n#if INSTANCING\r\nattribute mat4 m_aModelMatrix;\r\n#endif\r\n\r\n#endif\r\n\r\n";
     ShaderChunks["mark_main.fs"] = "#include <globalvars.inc>\r\n\r\nout vec4 out_color;\r\n\r\nvoid main()\r\n{\r\n#include <clipping.inc>\r\n \r\n out_color = m_vId;\r\n}";
     ShaderChunks["material_color.inc"] = "struct MaterialStruct\r\n{\r\n float values[6]; \r\n};\r\nuniform MaterialStruct m_uMaterial;\r\n\r\nconst vec3 dielectricColor = vec3(0.04); \r\nvoid parseMaterial(out vec3 diffuse, out vec3 specular, out float transparent, out float roughness)\r\n{\r\n vec3 albedo = m_vColor.rgb;\r\n\r\n transparent = m_vColor.a * m_uMaterial.values[3];\r\n \r\n#if GAMMA\r\n albedo = sRGBToLinear(albedo, 2.2); \r\n#endif\r\n\r\n diffuse = albedo;\r\n specular = dielectricColor;\r\n}\r\n\r\n";
+    ShaderChunks["material_dummy.inc"] = "struct MaterialStruct\r\n{\r\n float values[6]; \r\n};\r\nuniform MaterialStruct m_uMaterial;\r\n\r\nvoid parseMaterial(out vec3 diffuse, out vec3 specular, out float transparent, out float roughness)\r\n{\r\n transparent = 0.5;\r\n return;\r\n}";
     ShaderChunks["material_skybox.inc"] = "#if EQUIRECTANGLE || WALLPAPER\r\nuniform sampler2D m_uSkyTexture;\r\n#else \r\nuniform samplerCube m_uSkyTexture;\r\n#endif \r\n\r\nuniform float m_uTransparency;\r\n\r\nvoid parseMaterial(out vec3 diffuse, out vec3 specular, out float transparent, out float roughness)\r\n{\r\n#if EQUIRECTANGLE || WALLPAPER \r\n diffuse = sampleTexture2D(m_uSkyTexture, m_vTexCoord.xy).xyz; \r\n#endif\r\n#if CUBEMAP\r\n diffuse = sampleTexture3D(m_uSkyTexture, normalize(m_vTexCoord.xyz)).xyz; \r\n#endif \r\n\r\n#if GAMMA\r\n diffuse = sRGBToLinear(diffuse, 2.2); \r\n#endif\r\n\r\n transparent = m_uTransparency;\r\n}\r\n\r\n";
     ShaderChunks["material_solid.inc"] = "struct MaterialStruct\r\n{\r\n float values[6]; \r\n};\r\nuniform MaterialStruct m_uMaterial;\r\n\r\nconst vec3 dielectricColor = vec3(0.04); \r\n#if ALPHATEST\r\n uniform sampler2D m_uDiffuseTexture;\r\n#endif\r\n\r\nvoid parseMaterial(out vec3 diffuse, out vec3 specular, out float transparent, out float roughness)\r\n{\r\n vec3 albedo = vec3(m_uMaterial.values[0], m_uMaterial.values[1], m_uMaterial.values[2]);\r\n transparent = m_uMaterial.values[3];\r\n\r\n#if ALPHATEST\r\n vec4 texel = sampleTexture2D(m_uDiffuseTexture, m_vTexCoord.xy);\r\n float alphatest = texel.a * transparent;\r\n\r\n if (alphatest < 0.15)\r\n {\r\n discard;\r\n }\r\n#endif\r\n \r\n#if GAMMA\r\n albedo = sRGBToLinear(albedo, 2.2); \r\n#endif\r\n \r\n diffuse = albedo;\r\n specular = dielectricColor;\r\n}\r\n\r\n";
     ShaderChunks["material_texture.inc"] = "struct MaterialStruct\r\n{\r\n float values[6]; \r\n};\r\nuniform MaterialStruct m_uMaterial;\r\n\r\nuniform sampler2D m_uDiffuseTexture;\r\n\r\nconst vec3 dielectricColor = vec3(0.04); \r\nvoid parseMaterial(out vec3 diffuse, out vec3 specular, out float transparent, out float roughness)\r\n{\r\n vec4 texel = sampleTexture2D(m_uDiffuseTexture, m_vTexCoord.xy);\r\n\r\n transparent = texel.a * m_uMaterial.values[3];\r\n\r\n#if ALPHATEST\r\n if (transparent < 0.15) \r\n {\r\n discard;\r\n }\r\n#endif\r\n\r\n vec3 albedo = texel.rgb * vec3(m_uMaterial.values[0], m_uMaterial.values[1], m_uMaterial.values[2]);\r\n\r\n#if GAMMA\r\n albedo = sRGBToLinear(albedo, 2.2); \r\n#endif\r\n\r\n diffuse = albedo;\r\n specular = dielectricColor;\r\n\r\n}\r\n\r\n";
@@ -11951,6 +11952,7 @@ __webpack_require__.r(__webpack_exports__);
     ShaderChunks["transform_simple.inc"] = "\r\nvoid transform(inout vec4 position, inout vec4 normal, inout vec3 uv, out vec4 worldPosition)\r\n{\r\n#if MODEL_TRANSFORM\r\n#if INSTANCING\r\n position = m_aModelMatrix * position;\r\n normal = m_aModelMatrix * normal;\r\n#else\r\n position = m_uPerNode.modelMatrix * position;\r\n normal = m_uPerNode.modelMatrix * normal;\r\n#endif\r\n#endif\r\n\r\n worldPosition = position;\r\n position = m_uPerFrame.vpMatrix * position;\r\n}\r\n";
     ShaderChunks["transform_skybox.inc"] = "\r\nvoid transform(inout vec4 position, inout vec4 normal, inout vec3 uv, out vec4 worldPosition)\r\n{\r\n#if EQUIRECTANGLE\r\n uv = vec3(1.0 - uv.x, uv.y, 1.0);\r\n#endif\r\n#if WALLPAPER\r\n uv = vec3(uv.x, 1.0 - uv.y, 1.0);\r\n#endif\r\n#if CUBEMAP\r\n#if FLIP\r\n uv = vec3(position.x, -position.z, -position.y);\r\n#else\r\n uv = vec3(position.x, position.z, -position.y);\r\n#endif\r\n#endif\r\n\r\n#if MODEL_TRANSFORM\r\n position = m_uPerNode.modelMatrix * position;\r\n#endif\r\n#if EQUIRECTANGLE || CUBEMAP\r\n position = m_uPerFrame.vpMatrix * vec4(position.xyz, 0.0);\r\n#endif\r\n\r\n position = position.xyww; \r\n}\r\n\r\n\r\n";
     ShaderChunks["uniform.inc"] = "#if WEBGL2\r\nvec4 sampleTexture2D(sampler2D tex, vec2 coord)\r\n{\r\n return texture(tex, coord);\r\n}\r\n#else\r\nvec4 sampleTexture2D(sampler2D tex, vec2 coord)\r\n{\r\n return texture2D(tex, coord);\r\n}\r\n#endif\r\n\r\n#if WEBGL2\r\nvec4 sampleTexture3D(samplerCube tex, vec3 coord)\r\n{\r\n return texture(tex, coord);\r\n}\r\n#else\r\nvec4 sampleTexture3D(samplerCube tex, vec3 coord)\r\n{\r\n return textureCube(tex, coord);\r\n}\r\n#endif\r\n\r\n";
+    ShaderChunks["volume.inc"] = "uniform sampler2D m_uCubeTexture;\r\nuniform sampler2D m_uToneTexture;\r\nuniform vec2 m_uInvResolution;\r\nuniform float m_uAlphaCorrection;\r\n\r\nuniform mat4 m_uInvTransform;\r\n\r\nconst int MAX_STEPS = 888;\r\nconst float STEPS = 512.0;\r\n\r\nvec4 getColor(float intensity) {\r\n intensity = min(0.26, intensity) / 0.26;\r\n vec2 _uv = vec2(intensity, 0);\r\n vec4 color = sampleTexture2D(m_uToneTexture, _uv);\r\n float alpha = intensity;\r\n if (alpha < 0.03)\r\n {\r\n alpha = 0.02;\r\n }\r\n else\r\n {\r\n clamp(intensity, 0.5, 1.0);\r\n }\r\n\r\n return vec4(color.r, color.g, color.b, alpha); \r\n}\r\n\r\nvec4 sampleAs3DTexture(vec3 texCoord) {\r\n vec4 heightSlice1;\r\n vec4 heightSlice2;\r\n vec4 colorSlice1;\r\n vec4 colorSlice2;\r\n vec2 texCoordSlice1;\r\n vec2 texCoordSlice2;\r\n\r\n float z = clamp(texCoord.z, 0.0, 0.99);\r\n\r\n float totalHeight = 52.0;\r\n float sliceNumber = floor(z * totalHeight);\r\n\r\n float samplerNumber = 3.0;\r\n float top = min(samplerNumber + sliceNumber + 1.0, 51.0);\r\n float bottom = max(sliceNumber - samplerNumber, 0.0);\r\n\r\n float totalSamples = 0.0;\r\n\r\n texCoord.y = 1.0 - texCoord.y;\r\n texCoord.xy /= 8.0;\r\n\r\n float intensity = 0.0;\r\n for (int i = int(sliceNumber) + 1; i < int(top); i++)\r\n {\r\n vec2 texCoordSlice = texCoord.xy;\r\n texCoordSlice.x += (mod(float(i), 8.0) / 8.0);\r\n texCoordSlice.y += floor(float(i) / 8.0) / 8.0;\r\n\r\n float tempIntensity = sampleTexture2D(m_uCubeTexture, texCoordSlice).x;\r\n \r\n intensity += (samplerNumber - abs(z * totalHeight - (float(i)))) * tempIntensity;\r\n totalSamples += (samplerNumber - abs(z * totalHeight - (float(i))));\r\n }\r\n for (int i = int(sliceNumber); i > int(bottom); i--)\r\n {\r\n vec2 texCoordSlice = texCoord.xy;\r\n texCoordSlice.x += (mod(float(i), 8.0) / 8.0);\r\n texCoordSlice.y += floor(float(i) / 8.0) / 8.0;\r\n\r\n float tempIntensity = sampleTexture2D(m_uCubeTexture, texCoordSlice).x;\r\n intensity += (samplerNumber - (z * totalHeight - (float(i)))) * tempIntensity;\r\n totalSamples += (samplerNumber - (z * totalHeight - (float(i))));\r\n }\r\n\r\n if (totalSamples != 0.0)\r\n {\r\n intensity /= totalSamples; \r\n } \r\n\r\n return getColor(intensity);\r\n}\r\n\r\nvec3 shade(in vec3 diffuse, in vec3 specular, in float roughness, inout float transparent, in vec3 P, in vec3 N, in vec3 V)\r\n{\r\n vec2 texc = vec2(gl_FragCoord.x * m_uInvResolution.x,\r\n gl_FragCoord.y * m_uInvResolution.y);\r\n\r\n vec3 frontPos = (m_uInvTransform * vec4(P.x, P.y, P.z, 1.0)).xyz;\r\n\r\n vec3 dir = frontPos - (m_uInvTransform * m_uPerFrame.cameraPosition).xyz;\r\n\r\n float delta = 1.0 / STEPS;\r\n\r\n vec3 deltaDirection = normalize(dir) * delta;\r\n\r\n vec3 currentPosition = frontPos;\r\n\r\n vec4 accumulatedColor = vec4(0.0);\r\n\r\n float accumulatedAlpha = 0.0;\r\n\r\n vec4 colorSample;\r\n float alphaSample;\r\n\r\n int i;\r\n for (i = 0; i < MAX_STEPS; i++) {\r\n colorSample = sampleAs3DTexture(currentPosition);\r\n\r\n alphaSample = colorSample.a * m_uAlphaCorrection;\r\n\r\n alphaSample *= (1.0 - accumulatedAlpha);\r\n\r\n accumulatedColor += colorSample * alphaSample;\r\n\r\n accumulatedAlpha += alphaSample;\r\n\r\n currentPosition += deltaDirection;\r\n\r\n if (accumulatedAlpha >= 1.0\r\n || currentPosition.x < - 0.05 || currentPosition.y < -0.05 || currentPosition.z < -0.05\r\n || currentPosition.x > 1.05 || currentPosition.y > 1.05 || currentPosition.z > 1.05)\r\n break;\r\n }\r\n\r\n transparent = accumulatedAlpha;\r\n\r\n return accumulatedColor.xyz;\r\n}\r\n";
     return ShaderChunks;
 })());
 
@@ -11976,6 +11978,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony default export */ __webpack_exports__["default"] = ((function () {
     "use strict";
     var ShaderLibrary = {};
+    ShaderLibrary["volume"] = new _m3d_shader_source_js__WEBPACK_IMPORTED_MODULE_0__["default"]("volume", ["main.vs", "modelo_main.vs", "transform_simple.inc"], ["main.fs", "modelo_main.fs", "material_dummy.inc", "volume.inc"], {
+        "highPrecision": true,
+        "vpMatrix": true,
+        "modelMatrix": true,
+        "position": true,
+        "normal": true,
+        "uv": true
+    });
     ShaderLibrary["blit"] = new _m3d_shader_source_js__WEBPACK_IMPORTED_MODULE_0__["default"]("blit", "blit.vs", ["blit.fs", "blit_simple.inc"], {
         "highPrecision": true,
         "position": true,
@@ -15828,6 +15838,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _m3d_drawable_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./m3d_drawable.js */ "./03scene/drawables/m3d_drawable.js");
 /* harmony import */ var _materials_m3d_material_adhoc_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../materials/m3d_material_adhoc.js */ "./03scene/materials/m3d_material_adhoc.js");
 /* harmony import */ var _02resource_m3d_shader_library_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../02resource/m3d_shader_library.js */ "./02resource/m3d_shader_library.js");
+/* harmony import */ var _03scene_materials_m3d_material_volume_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../03scene/materials/m3d_material_volume.js */ "./03scene/materials/m3d_material_volume.js");
+/* harmony import */ var _00utility_m3d_math_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../../00utility/m3d_math.js */ "./00utility/m3d_math.js");
 //
 // m3d_drawable_library.js
 // Generate a handful of drawables
@@ -15836,15 +15848,15 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
+
 /* harmony default export */ __webpack_exports__["default"] = ((function () {
     "use strict";
     var DrawableLibrary = {
-        "createHeatmapVolume": function (resourceManager, position, length, width, height, cubeTexture, toneTexture) {
-            var color = color || [1, 1, 1];
-            position = position || [0, 0, 0];
+        "createHeatmapVolume": function (resourceManager, matrix, cubeTexture, toneTexture) {
             var mesh = resourceManager.getMesh("heat-map-volume");
             mesh.createHeatmapCube();
-            var shaderType = "volume-pass";
+            var shaderType = "volume";
             var shader = resourceManager.getShader(shaderType, ["MODEL_TRANSFORM"]);
             if (!shader.ready) {
                 var shaderSource = _02resource_m3d_shader_library_js__WEBPACK_IMPORTED_MODULE_2__["default"][shaderType];
@@ -15853,15 +15865,15 @@ __webpack_require__.r(__webpack_exports__);
                     throw ("modelo3d error at creating shader '" + shaderType + "'!");
                 }
             }
-            var material = new MaterialVolume("heat-map-volume");
+            var material = new _03scene_materials_m3d_material_volume_js__WEBPACK_IMPORTED_MODULE_3__["default"]("heat-map-volume");
             material.attachShader(shader);
             material.setToneTexture(toneTexture);
             material.setCubeTexture(cubeTexture);
             material.setAlphaCorrection(0.03);
-            var drawable = new _m3d_drawable_js__WEBPACK_IMPORTED_MODULE_0__["default"]("heat-map-volume", mesh, null, shader, material, null, [position[0] - length, position[1] - width, position[2] - height,
-                position[0] + length, position[1] + width, position[2] + height]);
-            drawable.transform.setTranslation(position[0], position[1], position[2]);
-            drawable.transform.setScaling(length, width, height);
+            var bbox = _00utility_m3d_math_js__WEBPACK_IMPORTED_MODULE_4__["default"].aabb.create();
+            var _bbox = _00utility_m3d_math_js__WEBPACK_IMPORTED_MODULE_4__["default"].aabb.createFromArray(0, 0, 0, 1, 1, 1);
+            _00utility_m3d_math_js__WEBPACK_IMPORTED_MODULE_4__["default"].aabb.transform(bbox, _bbox, matrix);
+            var drawable = new _m3d_drawable_js__WEBPACK_IMPORTED_MODULE_0__["default"]("heat-map-volume", mesh, null, shader, material, matrix, bbox);
             var invTransform = mat4.create();
             mat4.invert(invTransform, drawable.transform.matrix);
             material.setInvTransform(invTransform);
@@ -18354,6 +18366,256 @@ __webpack_require__.r(__webpack_exports__);
         this.reservedParameters["m_uTransparency"].value = value;
     };
     return MaterialSkybox;
+})());
+
+
+/***/ }),
+
+/***/ "./03scene/materials/m3d_material_volume.js":
+/*!**************************************************!*\
+  !*** ./03scene/materials/m3d_material_volume.js ***!
+  \**************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _m3d_material_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./m3d_material.js */ "./03scene/materials/m3d_material.js");
+/* harmony import */ var _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./m3d_material_parameter.js */ "./03scene/materials/m3d_material_parameter.js");
+/* harmony import */ var _m3d_globals_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../m3d_globals.js */ "./m3d_globals.js");
+//
+// m3d_material_adhoc.js
+// The material of adhoc one <= 0.5.6 modelo3d
+//
+// Copyright Modelo XX - 2017, All rights reserved.
+
+
+
+/* harmony default export */ __webpack_exports__["default"] = ((function () {
+    "use strict";
+    function MaterialVolume(name) {
+        // Inheritance
+        _m3d_material_js__WEBPACK_IMPORTED_MODULE_0__["default"].apply(this, arguments);
+        // Private
+        this._reservedParameters2 = {};
+        this._materialParameters = null;
+    }
+    ;
+    // MaterialVolume inherits Material
+    MaterialVolume.prototype = Object.create(_m3d_material_js__WEBPACK_IMPORTED_MODULE_0__["default"].prototype);
+    MaterialVolume.prototype.constructor = MaterialVolume;
+    var defaultMaterialValues = [1.0, 0.0, 1.0, 0.5, 100.0, 0.0, 0, 0]; // The last two 0s are for 4-alignment.
+    MaterialVolume.prototype.attachShader = function (shader, resourceManager) {
+        if (!shader && !resourceManager) {
+            return;
+        }
+        if (!shader) {
+            var shaderType = "solid";
+            shader = resourceManager.getShader(shaderType);
+            if (!shader.ready) {
+                var shaderSource = ShaderLibrary[shaderType];
+                shader.createFromShaderSource(shaderSource, ["MODEL_TRANSFORM"]);
+                if (!shader.ready) {
+                    throw ("modelo3d error at creating shader '" + shaderType + "'!");
+                }
+            }
+        }
+        if (!shader || !shader.ready) {
+            return;
+        }
+        // Apply the base class method
+        _m3d_material_js__WEBPACK_IMPORTED_MODULE_0__["default"].prototype.attachShader.apply(this, arguments);
+        // Default values:
+        // diffuse: 255, 255, 255
+        // transparent: 0.0
+        // roughness: 100.0
+        // metallic: 0.0 
+        for (var uniform in shader.reservedUniforms) { // If it is not the first time for material to attach a shader.
+            // If so, just update the associated uniform.
+            if (this.reservedParameters.hasOwnProperty(uniform)) {
+                continue;
+            }
+            if (uniform === "m_uDiffuseTexture") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.hasTexture = true;
+                this.reservedParameters[uniform].texUnit = 5;
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadTexture;
+            }
+            else if (uniform.indexOf("m_uMaterial") >= 0) {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+                this._materialParameters = new Float32Array(defaultMaterialValues);
+                this.reservedParameters[uniform].value = this._materialParameters;
+            }
+            else if (uniform.indexOf("m_uScale") >= 0) {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+                this._scaleParameters = new Float32Array([1.0, 1.0, 1.0]);
+                this.reservedParameters[uniform].value = this._scaleParameters;
+            }
+            else if (uniform === "m_uToneTexture") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].texUnit = 6;
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadTexture;
+            }
+            else if (uniform === "m_uCubeTexture") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].texUnit = 8;
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadTexture;
+            }
+            else if (uniform === "m_uPositionTexture") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].texUnit = 9;
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadTexture;
+            }
+            else if (uniform === "m_uInvResolution") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+                this.reservedParameters[uniform].value = [1.0 / _m3d_globals_js__WEBPACK_IMPORTED_MODULE_2__["default"].width, 1.0 / _m3d_globals_js__WEBPACK_IMPORTED_MODULE_2__["default"].height];
+            }
+            else if (uniform === "m_uAlphaCorrection") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+            }
+            else if (uniform === "m_uIntensityAsAlpha") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+            }
+            else if (uniform === "m_uBlendWithBackground") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+            }
+            else if (uniform === "m_uInvTransform") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadValue;
+            }
+            else if (uniform === "m_uBackgroundTexture") {
+                this.reservedParameters[uniform] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                this.reservedParameters[uniform].texUnit = 10;
+                this.reservedParameters[uniform].upload = this.reservedParameters[uniform].uploadTexture;
+            }
+        }
+        return shader;
+    };
+    MaterialVolume.prototype.equal = function (parameters) {
+        return (this._materialParameters[0] === parameters[0]) && (this._materialParameters[0] === parameters[0]) &&
+            (this._materialParameters[2] === parameters[2]) && (this._materialParameters[3] === parameters[3]);
+    };
+    MaterialVolume.prototype.hash = function () {
+        var s = "";
+        var dst = this._materialParameters;
+        s = s + dst[0].toString() + dst[1].toString() + dst[2].toString() + dst[3].toString();
+        return s;
+    };
+    MaterialVolume.prototype.setDiffuse = function (color) {
+        var dst = this._materialParameters;
+        dst[0] = color[0];
+        dst[1] = color[1];
+        dst[2] = color[2];
+    };
+    MaterialVolume.prototype.setScale = function (scale) {
+        this._scaleParameters[0] = scale[0];
+        this._scaleParameters[1] = scale[1];
+        this._scaleParameters[2] = scale[2];
+    };
+    MaterialVolume.prototype.setTransparent = function (alpha) {
+        this._materialParameters[3] = alpha;
+        this.transparent = (alpha < 0.99);
+    };
+    MaterialVolume.prototype.setDiffuseTexture = function (texture) {
+        this.reservedParameters["m_uDiffuseTexture"].value = texture;
+    };
+    MaterialVolume.prototype.setToneTexture = function (texture) {
+        if (this.reservedParameters["m_uToneTexture"]) {
+            this.reservedParameters["m_uToneTexture"].value = texture;
+        }
+    };
+    MaterialVolume.prototype.setCubeTexture = function (texture) {
+        if (this.reservedParameters["m_uCubeTexture"]) {
+            this.reservedParameters["m_uCubeTexture"].value = texture;
+        }
+    };
+    MaterialVolume.prototype.setPositionTexture = function (texture) {
+        if (this.reservedParameters["m_uPositionTexture"]) {
+            this.reservedParameters["m_uPositionTexture"].value = texture;
+        }
+    };
+    MaterialVolume.prototype.setBackgroundImage = function (texture) {
+        if (this.reservedParameters["m_uBackgroundTexture"]) {
+            this.reservedParameters["m_uBackgroundTexture"].value = texture;
+        }
+    };
+    MaterialVolume.prototype.setAlphaCorrection = function (value) {
+        if (this.reservedParameters["m_uAlphaCorrection"]) {
+            this.reservedParameters["m_uAlphaCorrection"].value = value;
+        }
+    };
+    MaterialVolume.prototype.setIntensityAsAlpha = function (value) {
+        if (this.reservedParameters["m_uIntensityAsAlpha"]) {
+            this.reservedParameters["m_uIntensityAsAlpha"].value = value;
+        }
+    };
+    MaterialVolume.prototype.setBlendWithBackground = function (enable) {
+        if (this.reservedParameters["m_uBlendWithBackground"]) {
+            this.reservedParameters["m_uBlendWithBackground"].value = enable;
+        }
+    };
+    MaterialVolume.prototype.setInvTransform = function (value) {
+        if (this.reservedParameters["m_uInvTransform"]) {
+            this.reservedParameters["m_uInvTransform"].value = value;
+        }
+    };
+    MaterialVolume.prototype.setShininess = function (shininess) {
+        this._materialParameters[4] = shininess;
+        gl.bindBuffer(gl.UNIFORM_BUFFER, this.reservedParameters["m_uMaterial"].value);
+        gl.bufferSubData(gl.UNIFORM_BUFFER, 0, this._materialParameters);
+        gl.bindBuffer(gl.UNIFORM_BUFFER, null);
+    };
+    MaterialVolume.prototype.getDiffuse = function () {
+        return this._materialParameters;
+    };
+    MaterialVolume.prototype.getTransparent = function () {
+        return this._materialParameters[3];
+    };
+    MaterialVolume.prototype.getShininess = function () {
+        return this._materialParameters[4];
+    };
+    MaterialVolume.prototype.getDiffuseTexture = function () {
+        return this.reservedParameters["m_uDiffuseTexture"].value;
+    };
+    // Copy special parameters from other material.
+    MaterialVolume.prototype.absorb = function (other) {
+        if (other.hasMask) {
+            var dst = this.reservedParameters["m_uDiffuseTexture"];
+            var src = other.reservedParameters["m_uDiffuseTexture"];
+            if (dst && src) {
+                dst.value = src.value;
+            }
+        }
+        // Only when this material is transparent but transparent value is invalid,
+        // we take the transparent value from others.
+        if (other.transparent && (this.transparent && this.getTransparent() < 0)) {
+            this.setTransparent(other.getTransparent());
+        }
+    };
+    MaterialVolume.prototype.clone = function (name) {
+        var ret = new MaterialVolume(name);
+        if (this.reservedParameters) {
+            for (var key in this.reservedParameters) {
+                if (key.indexOf("m_uMaterial") >= 0) {
+                    ret.reservedParameters[key] = new _m3d_material_parameter_js__WEBPACK_IMPORTED_MODULE_1__["default"]();
+                    ret.reservedParameters[key].upload = this.reservedParameters[key].upload;
+                    ret._materialParameters = new Float32Array(this.reservedParameters[key].value);
+                    ret.reservedParameters[key].value = ret._materialParameters;
+                }
+                else {
+                    ret[key] = this.reservedParameters[key];
+                }
+            }
+        }
+        return ret;
+    };
+    return MaterialVolume;
 })());
 
 
@@ -24086,11 +24348,17 @@ __webpack_require__.r(__webpack_exports__);
 
 var VolumeRenderer = /** @class */ (function () {
     function VolumeRenderer(viewer, resouceManager) {
+        this._textureWidth = 2048;
+        this._textureHeight = 2048;
         this._viewer = viewer;
         this._resourceManager = resouceManager;
+        this._enabled = false;
+        this._ready = false;
+        this._dfData = new Float32Array(this._textureWidth * this._textureHeight);
+        this._floorData = new Float32Array(this._textureWidth * this._textureHeight);
     }
-    VolumeRenderer.prototype.updateVolumeTexture = function (unitData) {
-        var processedData = new Float32Array(2048 * 2048);
+    VolumeRenderer.prototype.updateVolumeData = function (populationData) {
+        var processedData = new Float32Array(this._textureWidth * this._textureHeight);
         for (var i = 0; i < 8; i++) {
             for (var j = 0; j < 8; j++) {
                 for (var ii = 0; ii < 256; ii++) {
@@ -24100,7 +24368,7 @@ var VolumeRenderer = /** @class */ (function () {
                             continue;
                         }
                         var floorNumber = i * 8 + j;
-                        var data = unitData[floorNumber];
+                        var data = populationData[floorNumber];
                         if (data === undefined) {
                             continue;
                         }
@@ -24119,19 +24387,17 @@ var VolumeRenderer = /** @class */ (function () {
         }
         this._processedTexture.update(processedData);
     };
-    VolumeRenderer.prototype.createVolumeRenderingFromTextures = function (dfTextureUrl, floorTextureUrl, unitData) {
+    VolumeRenderer.prototype.create = function (matrix, dfTextureUrl, floorTextureUrl, colorMapUrl, populationData) {
         var _this = this;
-        var textureWidth = 2048;
-        var textureHeight = 2048;
         var blit = new _04renderer_m3d_blit__WEBPACK_IMPORTED_MODULE_3__["default"](_this._resourceManager);
-        var rt0 = new _04renderer_pipeline_RenderTarget__WEBPACK_IMPORTED_MODULE_1__["default"]("dfTexture", _this._resourceManager, textureWidth, textureHeight, {
+        var rt0 = new _04renderer_pipeline_RenderTarget__WEBPACK_IMPORTED_MODULE_1__["default"]("dfTexture", _this._resourceManager, this._textureWidth, this._textureHeight, {
             depthTest: false,
             colorFormat: gl.R32F,
             clearColor: [0.0, 0.0, 1.0, 0.0],
             colorFilter: gl.NEAREST,
             depthBuffer: 0
         });
-        var rt1 = new _04renderer_pipeline_RenderTarget__WEBPACK_IMPORTED_MODULE_1__["default"]("floorTexture", _this._resourceManager, textureWidth, textureHeight, {
+        var rt1 = new _04renderer_pipeline_RenderTarget__WEBPACK_IMPORTED_MODULE_1__["default"]("floorTexture", _this._resourceManager, this._textureWidth, this._textureHeight, {
             depthTest: false,
             colorFormat: gl.R32F,
             clearColor: [0.0, 0.0, 1.0, 0.0],
@@ -24141,29 +24407,34 @@ var VolumeRenderer = /** @class */ (function () {
         var floorTexture = new _02resource_m3d_texture__WEBPACK_IMPORTED_MODULE_2__["default"]("floor-texture", _this._resourceManager);
         var dfTexture = new _02resource_m3d_texture__WEBPACK_IMPORTED_MODULE_2__["default"]("df-texture", _this._resourceManager);
         this._processedTexture = new _02resource_m3d_texture__WEBPACK_IMPORTED_MODULE_2__["default"]("processed-texture", _this._resourceManager);
-        this._processedTexture.create(textureWidth, textureHeight, gl.R32F, gl.NEAREST);
+        this._processedTexture.create(this._textureWidth, this._textureHeight, gl.R32F, gl.NEAREST);
         floorTexture.createFromFile(floorTextureUrl, gl.RGBA, gl.NEAREST, gl.CLAMP_TO_EDGE, function () {
+            // set the viewport before blit.
             blit.setTexture(floorTexture);
+            _this._viewer.getRenderer().renderState.invalidateStates();
+            _this._viewer.getRenderer().renderState.viewport([0, 0, _this._textureWidth, _this._textureHeight]);
             blit.render(_this._viewer.getRenderer(), rt1, false, false);
-            gl.readPixels(0, 0, textureWidth, textureHeight, gl.RED, gl.FLOAT, _this._floorData);
+            gl.readPixels(0, 0, _this._textureWidth, _this._textureHeight, gl.RED, gl.FLOAT, _this._floorData);
             dfTexture.createFromFile(dfTextureUrl, gl.RGBA, gl.NEAREST, gl.CLAMP_TO_EDGE, function () {
                 blit.setTexture(dfTexture);
                 blit.render(_this._viewer.getRenderer(), rt0, false, false);
-                gl.readPixels(0, 0, textureWidth, textureHeight, gl.RED, gl.FLOAT, _this._dfData);
-                _this.updateVolumeTexture(unitData);
+                gl.readPixels(0, 0, _this._textureWidth, _this._textureHeight, gl.RED, gl.FLOAT, _this._dfData);
+                _this.updateVolumeData(populationData);
                 var toneTexture = _this._resourceManager.getTexture("toneMapTexture");
-                toneTexture.createFromFile("./colormap2.png", gl.RGBA, gl.NEAREST, gl.CLAMP_TO_EDGE, null);
-                // step4. create drawable cube
-                //51 * 42.2 * 4.2
-                _this._volume = _03scene_drawables_m3d_drawable_library_js__WEBPACK_IMPORTED_MODULE_0__["default"].createHeatmapVolume(_this._resourceManager, [0, 0, 0], 0.5, 0.4, 2, _this._processedTexture, toneTexture);
+                toneTexture.createFromFile(colorMapUrl, gl.RGBA, gl.NEAREST, gl.CLAMP_TO_EDGE, null);
+                _this._volume = _03scene_drawables_m3d_drawable_library_js__WEBPACK_IMPORTED_MODULE_0__["default"].createHeatmapVolume(_this._resourceManager, matrix, _this._processedTexture, toneTexture);
+                _this._ready = true;
             });
         });
     };
     VolumeRenderer.prototype.render = function (renderTarget, renderer, camera, clipping, lights) {
-        if (!this._volume) {
+        if (!this._enabled || !this._ready) {
             return;
         }
         renderer.drawDrawables(renderTarget, [this._volume], camera, [null, null, null], null, clipping, lights, null, null, gl.CCW);
+    };
+    VolumeRenderer.prototype.setEnable = function (enable) {
+        this._enabled = enable;
     };
     return VolumeRenderer;
 }());
@@ -35384,6 +35655,33 @@ var Viewer3D = /** @class */ (function (_super) {
     Viewer3D.prototype.setOverrideColor = function (color) {
         //this._renderScene.setProgressiveRenderingEnabled(false);
         //this._renderScene.setOverridedMaterial(color);
+        this.invalidate();
+    };
+    /**
+     * Create volume rendering in certain location.
+     * @param matrix The matrix of the volume. if it's identity the volume is a unit cube centered at (0.5, 0.5, 0.5).
+     * @param dfTextureUrl The texture of distacne field(2048 * 2048).
+     * @param floorTextureUrl The texutre of floor data. Each color in it indicates a unit.
+     * @param colorMapUrl The color map use in volume rendering.
+     * @param populationData The population data.
+     */
+    Viewer3D.prototype.createVolumeRendering = function (matrix, dfTextureUrl, floorTextureUrl, colorMapUrl, populationData) {
+        this._volumeRenderer.create(matrix, dfTextureUrl, floorTextureUrl, colorMapUrl, populationData);
+        this.invalidate();
+    };
+    /**
+     * @param enable Ture if you want it to be enabled.
+     */
+    Viewer3D.prototype.setVolumeRenderingEnabled = function (enable) {
+        this._volumeRenderer.setEnable(enable);
+        this.invalidate();
+    };
+    /**
+     * update the population data of volume rendering.
+     * @param populationData
+     */
+    Viewer3D.prototype.updateVolumeData = function (populationData) {
+        this._volumeRenderer.updateVolumeData(populationData);
         this.invalidate();
     };
     return Viewer3D;
