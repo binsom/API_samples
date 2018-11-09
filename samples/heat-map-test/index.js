@@ -1302,197 +1302,48 @@ var createVolumeRendering5 = function(heatMapTest) {
     heatMapTest.createVolumeRenderingFromTextures("./volumeMap-full.png", "./floorMap-full.png", unitData);
 }
 
+Modelo.init({"endpoint": "https://build-portal.modeloapp.com"});
+
+var modelId = "93rjxWY4";
+
 Modelo.Auth.signIn(appToken,
     null,
     function () {
         var c = document.getElementById("model");
-        var viewer = new Modelo.View.Viewer3D(c, false, 1200, 800);
-        // var viewer = new Modelo.View.Viewer3D(c, false, 4096, 4096);
 
-        viewer.createScene(function () {
-            console.log("create scene successfully");
-            viewer.addInput(new Modelo.View.Input.Mouse(c)); // Add mouse to control camera.
-            var keyboard = new Modelo.View.Input.Keyboard(c); // Add keyboard callback.
-            viewer.addInput(keyboard);
-            keyboard.addKeyUpListener(function (keyboard) {
-                if (keyboard.key === 27) {
-                    viewer.destroy();
-                }
+        var w = c.clientWidth;
+        var h = c.clientHeight;
+        var viewer = new Modelo.View.Viewer3D("model", false, w, h);
+
+        window.addEventListener("resize", function () {
+            var c = document.getElementById("model");
+            var w = c.clientWidth;
+            var h = c.clientHeight;
+            viewer.resize(w, h);
+        });
+
+        viewer.loadModel(modelId, // Load the model into the viewer.
+            null,
+            function () {
+                viewer.addInput(new Modelo.View.Input.Mouse(viewer)); // Add mouse to control camera.
+                var keyboard = new Modelo.View.Input.Keyboard(viewer); // Add keyboard callback.
+                viewer.addInput(keyboard);
+                keyboard.addKeyUpListener(function (keyboard) {
+                    if (keyboard.key === 27) {
+                        viewer.destroy();
+                    }
+                });
+                console.log("done");
+            },
+            function (errmsg) {
+                console.log(errmsg); // The loading error.
+            },
+            function (per) {
             });
-        });
-
-        var heatMapTest = viewer.createHeatMapTest();
-        // createPlaneHeatMap(heatMapTest);
-        // createSlab(heatMapTest);
-        // createHeightMap(heatMapTest);
-        // createVolumeRendering(heatMapTest);
-        // createPlaneHeatMapFromXls(heatMapTest);
-        // createVolumeRenderingFromXls(heatMapTest);
-        // createVolumerendering2(heatMapTest);
-        // createVolumeRenderingDF(heatMapTest);
-        // createVolumerendering3(heatMapTest);
-        // createVolumeRendering4(heatMapTest);
-        createVolumeRendering5(heatMapTest);
-
-        // viewer.setVolumeRenderingAlphaCorrection(0.05);
-
-        viewer._scene.core.bbox = new Float32Array([-10, -10, -10, 10, 10, 10]);
-        viewer._scene.core.radius = 3;
-        viewer.getCamera().switchToView(Modelo.View.ViewAngle.WORLD);
-
-        document.getElementById("intensity-as-alpha").onchange = function (evt) {
-            viewer.setVolumeRenderingIntensityAsAlpha(document.getElementById("intensity-as-alpha").checked);
-        };
-
-        document.getElementById("texture").onchange = function (evt) {
-            viewer.toggleTextureViewer();
-        };
-
-        document.getElementById("background-blend").onchange = function () {
-            viewer.setVolumeRenderingBlendWithBackground(document.getElementById("background-blend").checked);
-        }
-
-        $('#alphaRange').range({
-            min: 0.01,
-            max: 0.5,
-            start: 0.01,
-            step: 0.001,
-            onChange: function (value) {
-                viewer.setVolumeRenderingAlphaCorrection(value);
-            }
-        });
-
-        var _this = this;
-
-        _this.toneMap = [
-            [0, 0, 255, 10],
-            [0, 255, 255, 20],
-            [0, 255, 0, 200],
-            [255, 255, 0, 200],
-            [255, 0, 0, 255]
-        ];
-        var buffer = new Uint8Array(8 * 4);
-        var updateToneMap = function () {
-            for (var i = 0; i < _this.toneMap.length; i++) {
-                buffer[i * 4] = _this.toneMap[i][0];
-                buffer[i * 4 + 1] = _this.toneMap[i][1];
-                buffer[i * 4 + 2] = _this.toneMap[i][2];
-                buffer[i * 4 + 3] = _this.toneMap[i][3];
-            }
-            // viewer.setVolumeRenderingColorMap(buffer);
-        }
-
-        $('#colorMap0').css("background-color", "rgb(" + _this.toneMap[0][0] + "," + _this.toneMap[0][1] + "," + _this.toneMap[0][2] + ")");
-        $('#colorMap1').css("background-color", "rgb(" + _this.toneMap[1][0] + "," + _this.toneMap[1][1] + "," + _this.toneMap[1][2] + ")");
-        $('#colorMap2').css("background-color", "rgb(" + _this.toneMap[2][0] + "," + _this.toneMap[2][1] + "," + _this.toneMap[2][2] + ")");
-        $('#colorMap3').css("background-color", "rgb(" + _this.toneMap[3][0] + "," + _this.toneMap[3][1] + "," + _this.toneMap[3][2] + ")");
-        $('#colorMap4').css("background-color", "rgb(" + _this.toneMap[4][0] + "," + _this.toneMap[4][1] + "," + _this.toneMap[4][2] + ")");
-
-        $('#colorMap0').ColorPicker({
-            onChange: function (hsb, hex, rgb) {
-                _this.toneMap[0][0] = rgb.r;
-                _this.toneMap[0][1] = rgb.g;
-                _this.toneMap[0][2] = rgb.b;
-                $('#colorMap0').css("background-color", "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")");
-                updateToneMap();
-            }
-        });
-        $('#colorMap1').ColorPicker({
-            onChange: function (hsb, hex, rgb) {
-                _this.toneMap[1][0] = rgb.r;
-                _this.toneMap[1][1] = rgb.g;
-                _this.toneMap[1][2] = rgb.b;
-                $('#colorMap1').css("background-color", "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")");
-                updateToneMap();
-            }
-        });
-        $('#colorMap2').ColorPicker({
-            onChange: function (hsb, hex, rgb) {
-                _this.toneMap[2][0] = rgb.r;
-                _this.toneMap[2][1] = rgb.g;
-                _this.toneMap[2][2] = rgb.b;
-                $('#colorMap1').css("background-color", "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")");
-                updateToneMap();
-            }
-        });
-        $('#colorMap3').ColorPicker({
-            onChange: function (hsb, hex, rgb) {
-                _this.toneMap[3][0] = rgb.r;
-                _this.toneMap[3][1] = rgb.g;
-                _this.toneMap[3][2] = rgb.b;
-                $('#colorMap3').css("background-color", "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")");
-                updateToneMap();
-            }
-        });
-        $('#colorMap4').ColorPicker({
-            onChange: function (hsb, hex, rgb) {
-                _this.toneMap[4][0] = rgb.r;
-                _this.toneMap[4][1] = rgb.g;
-                _this.toneMap[4][2] = rgb.b;
-                $('#colorMap4').css("background-color", "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")");
-                updateToneMap();
-            }
-        });
-
-        $('#alpha0').range({
-            min: 0,
-            max: 255,
-            start: _this.toneMap[0][3],
-            step: 1,
-            onChange: function (value) {
-                _this.toneMap[0][3] = value;
-                updateToneMap();
-            }
-        });
-
-        $('#alpha1').range({
-            min: 0,
-            max: 255,
-            start: _this.toneMap[1][3],
-            step: 1,
-            onChange: function (value) {
-                _this.toneMap[1][3] = value;
-                updateToneMap();
-            }
-        });
-
-        $('#alpha2').range({
-            min: 0,
-            max: 255,
-            start: _this.toneMap[2][3],
-            step: 1,
-            onChange: function (value) {
-                _this.toneMap[2][3] = value;
-                updateToneMap();
-            }
-        });
-
-        $('#alpha3').range({
-            min: 0,
-            max: 255,
-            start: _this.toneMap[3][3],
-            step: 1,
-            onChange: function (value) {
-                _this.toneMap[3][3] = value;
-                updateToneMap();
-            }
-        });
-
-        $('#alpha4').range({
-            min: 0,
-            max: 255,
-            start: _this.toneMap[4][3],
-            step: 1,
-            onChange: function (value) {
-                _this.toneMap[4][3] = value;
-                updateToneMap();
-            }
-        });
     },
     function (errmsg) {
         console.log(errmsg); // If there is any sign-inerror.
     });
-
-
+    
 
     // 51 * 42.2 * 4.2
