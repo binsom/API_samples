@@ -7,6 +7,8 @@ Modelo.Auth.signIn(appToken,
     function () {
         var viewer = new Modelo.View.Viewer3D("model");
 
+        viewer.setEffectEnabled("SSAO", true);
+
         viewer.loadModel(modelId, // Load the model into the viewer.
             null,
             function () {
@@ -16,6 +18,13 @@ Modelo.Auth.signIn(appToken,
                 keyboard.addKeyUpListener(function (keyboard) {
                     if (keyboard.key === 27) {
                         viewer.destroy();
+                    }
+                    if (keyboard.key === 71) {
+                        console.log(JSON.stringify(viewer.getCamera().getData()));
+                    }
+                    if (keyboard.key === 72) {
+                        const savedData = {"fov":46,"distance":7.398815461907708,"phi":0.26903292519943295,"theta":-2.7347981633974467,"at":[14.525321920544142,-36.874824571853985,2.900651321065927]};
+                        viewer.getCamera().setData(savedData);
                     }
                 });
                 console.log("done");
