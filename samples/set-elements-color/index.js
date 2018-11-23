@@ -21,6 +21,7 @@ Modelo.Auth.signIn(appToken,
                 var elementNames = [];
                 viewer.getEventEmitter().on("onElementSelected", (elementNames1) => {
                     // Restore the element's colors.
+                    selectElementTool.pick(elementNames1, true);
                     if (elementNames.length !== 0) {
                         viewer.getScene().setElementsColor(elementNames, null);
                     }
