@@ -9,8 +9,8 @@ window.onload = function () {
         function () {
             var btn = document.getElementById("compare-model");
             btn.onclick = function () {
-                var modelId1 = "XyYG2D1e";
-                var modelId2 = "XyYG2D1e";
+                var modelId1 = "93rjkK14";
+                var modelId2 = "DQ8P6P1k";
                 Modelo.Model.compare(modelId1, modelId2);
             }
         },
